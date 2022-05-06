@@ -1,5 +1,5 @@
 ---
-title: "Title"
+title: "ITTF Dataset Exploration"
 author: "KF"
 output: 
   html_document:
@@ -15,11 +15,27 @@ knitr::opts_chunk$set(
 	echo=TRUE,
 	message=FALSE,
 	warning=FALSE,
-	eval=FALSE
+	eval=TRUE
 )
 ```
 
+## Background
+
+These datasets were obtained from [Kaggle](https://www.kaggle.com/datasets/romanzdk/ittf-table-tennis-player-rankings-and-information) and shows the ITTF rankings of players between the years 2001-2020.
+
+My plan:
+
+1. Import dataset
+1. Exploratory Data Analysis
+  - distributions
+  - anything else that is interesting?
+1. Which playing style is most popular? Least popular?
+
+As a table tennis player myself, my ulterior motive is to see which playing style I should try to give my opponents the most headaches. Read this as: least common/rare playing styles.
+
 ## Import
+
+Here, I start off by importing the necessary packages and dataset. Note: KF.QoL is a custom package I wrote that contains custom functions I wrote to improve my coding/analysis quality of life.
 
 ### Packages + Functions
 
@@ -33,9 +49,109 @@ library(readxl)
 
 #Additional packages
 library(bslib)
+```
+
+## Player Info Dataset
+
+```{r}
+player_info <- KF.QoL::soleImport("~/Desktop/KaggleData/ITTF/ittf_player_info.csv",fread=TRUE)
+```
+
+### EDA
+
+When taking a first look at the data, I notice some players have "-" for one or more of the following:
+
+1. Playing hand
+1. Playing style
+1. Grip
+
+As such, I want to take a closer look at the type of missingness this is. To simplify things, I am filtering for the rows I am interested in (have "-" in at least 1 of the 3 listed variables).
+
+```{r}
+info_temp <- player_info %>% filter(`Playing hand`=="-"|`Playing style`=="-"|`Grip`=="-")
+```
+
+The number of rows went from `r nrow(player_info)` to `r nrow(info_temp)`.
+
+```{r}
+#go over all vars (except Player ID & Name) to print out unique values
+numLvls <- lapply(names(info_temp)[-(1:2)],function(x){
+  (unique(info_temp[[x]]))
+})
+
+#add names (to avoid any confusions)
+names(numLvls) <- names(info_temp)[-(1:2)]
+```
+
+From this result, I all aspects of the player's style is unknown. A large number:
+
+`r unique(numLvls[["Assoc"]])` 
+
+of Associations are represented. Males and Females are represented. A wide range of birth years are represented. But, there is at least one instance of NA and "0". Players that are `r unique(numLvls[["Activity"]])` are represented.
+
+#### Questions I have (for this subset of data):
+
+- What is the difference between "-" and NA for the player's style? Are they the same?
+- What does "^^" next to name mean?
+  - How many have that?
+- Which years are not represented here?
+  - Is it due to players not being born on that year?
+  - Or is there a hidden correlation?
+- What is distribution on: gender, association, activity
+
+#### Plotting Distributions
+
+```{r}
+#list of vars I want to view distribution of
+varOfInterest <- names(numLvls)[1:4]
+
+#print out all 4 plots using custom function
+lapply(varOfInterest,function(varName){
+  ggplot(info_temp,aes(info_temp[[varName]]))+ #removed ,fill=info_temp[[varName]]
+    geom_bar(stat="count")+
+    labs(title=varName,x="Unique Levels",y="Count")+
+    theme(axis.text.x=element_text(angle=90))
+})
+```
+
+Note: I chose to not use color/fill because it caused loading issues. Will have to fix/create plot for "Association" col.
+
+From the output histograms, those that have "-" listed as their style:
+
+- 2 associations have > 50 players
+- Males > Females
+- ~150 for Birth year = 0, <10 for Birth year = NA
+- majority are born in early 2000s
+- significant portion Active compared to Inactive
+
+Other question(s) that arose:
+
+- How were the data collected?
+- How many are sponsored players?
+  - sponsored players are more likely to disclose their equipment
+- Does ranking explain this?
+- How about social media presence?
+
+#### Players whose style is NA
+
+```{r}
+info_na <- player_info %>% filter(is.na(`Playing hand`)|is.na(`Playing style`)|is.na(`Grip`))
+```
+
+A very large number of rows `r nrow(info_na)` have NA for 1+ aspect of their playing style. In fact, everything is NA!
+
+I will be applying the same workflow from above to this version:
+
+```{r}
 
 ```
 
+## Removed "-" and NA
 
+```{r}
+#using anti_join and %>%
+player_info_v1 <- player_info %>% anti_join(info_na,by=c("Player ID","Name")) %>%
+                    anti_join(info_temp,by=c("Player ID","Name"))
+```
 
 
