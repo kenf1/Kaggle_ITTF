@@ -26,16 +26,19 @@ These datasets were obtained from [Kaggle](https://www.kaggle.com/datasets/roman
 My plan:
 
 1. Import dataset
+
 1. Exploratory Data Analysis
-  - distributions
-  - anything else that is interesting?
+
+    - distributions
+    - anything else that is interesting?
+  
 1. Which playing style is most popular? Least popular?
 
 As a table tennis player myself, my ulterior motive is to see which playing style I should try to give my opponents the most headaches. Read this as: least common/rare playing styles.
 
 ## Import
 
-Here, I start off by importing the necessary packages and dataset. Note: KF.QoL is a custom package I wrote that contains custom functions I wrote to improve my coding/analysis quality of life.
+Here, I start off by importing the necessary packages and dataset. ***Note***: KF.QoL is a custom package I wrote that contains custom functions I wrote to improve my coding/analysis quality of life.
 
 ### Packages + Functions
 
@@ -138,7 +141,7 @@ Other question(s) that arose:
 info_na <- player_info %>% filter(is.na(`Playing hand`)|is.na(`Playing style`)|is.na(`Grip`))
 ```
 
-A very large number of rows `r nrow(info_na)` have NA for 1+ aspect of their playing style. In fact, everything is NA!
+A very large number of rows `r nrow(info_na)` have NA for 1+ aspect of their playing style. In fact, all entries for these 3 columns are NA!
 
 I will be applying the same workflow from above to this version:
 
