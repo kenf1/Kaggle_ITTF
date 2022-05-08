@@ -47,8 +47,8 @@ Here, I start off by importing the necessary packages and dataset. ***Note***: K
 gc()
 library(KF.QoL)
 library(tidyverse)
-library(data.table)
-library(readxl)
+# library(data.table)
+# library(readxl)
 
 #Additional packages
 library(bslib)
@@ -56,8 +56,10 @@ library(bslib)
 
 ## Player Info Dataset
 
+~~Since I expect the dataset to have a large number of rows, I will be using data.table to read in the csv files.~~
+
 ```{r}
-player_info <- KF.QoL::soleImport("~/Desktop/KaggleData/ITTF/ittf_player_info.csv",fread=TRUE)
+player_info <- KF.QoL::soleImport("~/Desktop/KaggleData/ITTF/ittf_player_info.csv")
 ```
 
 ### EDA
@@ -115,6 +117,8 @@ lapply(varOfInterest,function(varName){
     labs(title=varName,x="Unique Levels",y="Count")+
     theme(axis.text.x=element_text(angle=90))
 })
+
+rm(numLvls,varOfInterest)
 ```
 
 Note: I chose to not use color/fill because it caused loading issues. Will have to fix/create plot for "Association" col.
@@ -134,6 +138,7 @@ Other question(s) that arose:
   - sponsored players are more likely to disclose their equipment
 - Does ranking explain this?
 - How about social media presence?
+  - somewhat correlated to being a sponsored player
 
 #### Players whose style is NA
 
@@ -146,7 +151,7 @@ A very large number of rows `r nrow(info_na)` have NA for 1+ aspect of their pla
 I will be applying the same workflow from above to this version:
 
 ```{r}
-
+#skipped for now
 ```
 
 ## Removed "-" and NA
@@ -156,5 +161,55 @@ I will be applying the same workflow from above to this version:
 player_info_v1 <- player_info %>% anti_join(info_na,by=c("Player ID","Name")) %>%
                     anti_join(info_temp,by=c("Player ID","Name"))
 ```
+
+```{r}
+#view birth year=0
+player_info_yr0 <- player_info_v1 %>% filter(`Birth year`==0)
+
+#rm those w/ 
+player_info_v1 <- anti_join(player_info_v1,player_info_yr0,by=c("Player ID","Name"))
+```
+
+`r unique(player_info_yr0$Assoc)`
+
+Taking a look at the associations, I notice the majority were from smaller countries. Of course, there are some exceptions, such as: France and Sweden.
+
+At this point, I have done cleaning the `Player Info` dataset and will move onto the men's rankings dataset.
+
+```{r}
+#rm vars
+rm(info_na,info_temp,player_info,player_info_yr0)
+```
+
+## Men's Rankings Dataset
+
+```{r}
+rankings_m <- KF.QoL::soleImport("~/Desktop/KaggleData/ITTF/ittf_rankings.csv")
+
+#all rows for PreviousPoints & WeekNum=0 (removed)
+rankings_m <- rankings_m %>% select(-c("Previous Points","WeekNum"))
+```
+
+The rankings dataset can first be split by year. I might consider splitting by month or week later on.
+
+```{r}
+#by year
+male_rankings <- split(rankings_m,rankings_m$YearNum)
+
+#by month (within year)
+for(i in 1:length(male_rankings)){
+  temp_df <- male_rankings[[i]]
+  male_rankings[[as.character(names(male_rankings)[i])]] <- split(temp_df,temp_df$MonthNum)
+}
+
+#find years where there are less than 12 months of data 
+months_present <- unlist(lapply(male_rankings,length))
+
+rm(rankings_m)
+```
+
+While there is data for all 12 months for most years, there are 3 with 11 months, 1 with 2 months, and 2 with 1 month.
+
+2009,2019,2020 were abnormalities that occurred due to pandemics: swine-flu for 2009 and COVID-19 for 2019,2020
 
 
