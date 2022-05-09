@@ -184,10 +184,14 @@ rm(info_na,info_temp,player_info,player_info_yr0)
 ## Men's Rankings Dataset
 
 ```{r}
+#import dataset, has option for data.table
 rankings_m <- KF.QoL::soleImport("~/Desktop/KaggleData/ITTF/ittf_rankings.csv")
 
 #all rows for PreviousPoints & WeekNum=0 (removed)
 rankings_m <- rankings_m %>% select(-c("Previous Points","WeekNum"))
+
+#convert selected cols to numeric
+rankings_m[,c("Rank","Previous","Points","MonthNum","YearNum")] <- lapply(rankings_m[,c("Rank","Previous","Points","MonthNum","YearNum")],as.numeric)
 ```
 
 The rankings dataset can first be split by year. I might consider splitting by month or week later on.
@@ -204,12 +208,102 @@ for(i in 1:length(male_rankings)){
 
 #find years where there are less than 12 months of data 
 months_present <- unlist(lapply(male_rankings,length))
-
-rm(rankings_m)
 ```
 
 While there is data for all 12 months for most years, there are 3 with 11 months, 1 with 2 months, and 2 with 1 month.
 
 2009,2019,2020 were abnormalities that occurred due to pandemics: swine-flu for 2009 and COVID-19 for 2019,2020
 
+```{r}
+#keep data from last timepoint
+for(i in 1:length(male_rankings)){
+  male_rankings[[i]] <- male_rankings[[i]][[length(male_rankings[[i]])]]
+}
 
+#turn back into df form
+male_rankings_v1 <- bind_rows(male_rankings)
+```
+
+### Add Playing Style
+
+```{r}
+#vars I want to add
+style_list <- c("Playing style","Playing hand","Grip")
+
+#loop to add vars using custom function
+for(i in 1:length(style_list)){
+  varName <- style_list[i]
+  male_rankings_v1[[varName]] <- KF.QoL::match_n_fill(player_info_v1$Name,male_rankings_v1$Name,
+                                          player_info_v1[[varName]])
+}
+
+#rm other classes
+male_rankings_v1 <- as.data.frame(male_rankings_v1)
+
+rm(male_rankings,months_present,style_list,varName)
+```
+
+## What is the dominant playing style of the top 100 ranked players?
+
+```{r}
+#just top 100 players per year
+male_rankings_v2 <- male_rankings_v1 %>% group_by(YearNum) %>% filter(Rank<=100)
+
+#celluloid vs plastic ball era
+male_rankings_v2$Era <- ifelse(male_rankings_v2$YearNum<=2014,"Celluloid","Plastic")
+male_rankings_v3 <- split(male_rankings_v2,male_rankings_v2$Era)
+
+#playing hand
+male_rankings_v3$Celluloid %>% filter(YearNum==2001) %>% 
+  ggplot(aes(`Playing hand`,fill=`Grip`))+
+  geom_bar(stat="count")+
+  labs(y="Number of players",
+    title=paste("Playing hand and grip for the top 100 players in","2001",sep=" "))
+
+#playing style
+male_rankings_v3$Celluloid %>% filter(YearNum==2001) %>% 
+  ggplot(aes(`Grip`,fill=`Playing style`))+
+  geom_bar(stat="count")+
+  labs(y="Number of players",
+    title=paste("Playing hand and grip for the top 100 players in","2001",sep=" "),
+    subtitle=paste(male_rankings_v3$Celluloid$Era),"Era",sep=" ")
+
+rm(male_rankings_v1,male_rankings_v2)
+```
+
+## Conclusion
+
+Ignoring the NAs, it seems like the **most** popular style is **Right handed shakehand grip attacker**. The **least** popular style would be Left hand penhold grip defender.
+
+Although the data seems to indicate I should be playing a defensive style using a left hand penhold grip, there are other details (from domain expertise) that were glossed over. 
+
+1. Most people in the world are right-handed.
+
+1. Penhold style is rare/non-existent outside of Asian countries.
+
+1. Penhold style's advantages, especially during the celluloid ball era, are: deceptive serves and extra wrist flexibility/movement to impart more spin on the ball.
+
+    - Both of these allow penholders to set up a strong 3^rd^ ball attack.
+  
+1. Mastering the penhold style can be difficult.
+
+    - There are many grip variations: traditional Chinese penhold, Japanese/Korean penhold, and RPB (reverse penhold backhand). Each has their advantages and disadvantages.
+  
+    - All of the grip variations have a (relatively/subjectively) steeper learning curve for the backhand side compared to the shakehand grip.
+
+Taking into account all of these insights, I plan to use right hand shakehand defensive style although I might experiment with right hand penhold defensive style.
+
+Other factors that were not considered are pips vs inverted sheet and type of forehand and backhand rubber.
+
+### Future Directions
+
+As I continue to explore and analyze this dataset, I plan to:
+
+- work on the female rankings dataset
+- create more plots (time-series)
+- incorporate equipment (blade, forehand+backhand rubbers)
+- tidy my code
+
+```{r}
+rm(temp_df,rankings_m)
+```
